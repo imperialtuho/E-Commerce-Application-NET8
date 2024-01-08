@@ -77,7 +77,6 @@ namespace Infrastructure
                     }
                 };
             });
-            
 
             services.AddScoped<ISqlConnectionFactory, SqlConnectionFactory>();
 

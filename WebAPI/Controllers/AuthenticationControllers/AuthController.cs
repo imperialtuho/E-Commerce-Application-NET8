@@ -10,11 +10,19 @@ using Microsoft.AspNetCore.Mvc;
 namespace WebAPI.Controllers.AuthenticationControllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
+        /// <summary>
+        /// IMediator.
+        /// </summary>
         private readonly IMediator _mediator;
 
+        /// <summary>
+        /// AuthController constructor.
+        /// </summary>
+        /// <param name="mediator">The mediator.</param>
         public AuthController(IMediator mediator)
         {
             _mediator = mediator;
@@ -27,6 +35,7 @@ namespace WebAPI.Controllers.AuthenticationControllers
         /// <returns>System.Task{BaseResponseObject}.</returns>
         [HttpPost]
         [Route("login")]
+        [AllowAnonymous]
         public async Task<BaseResponseObject> Login([FromBody] LoginCommand model)
         {
             return await _mediator.Send(new LoginCommand(model.UserName, model.Password, model.Email));
@@ -39,21 +48,33 @@ namespace WebAPI.Controllers.AuthenticationControllers
         /// <returns>System.Task{BaseResponseObject}.</returns>
         [HttpPost]
         [Route("register")]
+        [AllowAnonymous]
         public async Task<BaseResponseObject> Register([FromBody] RegisterCommand model)
         {
             return await _mediator.Send(new RegisterCommand(model.UserName, model.Password, model.Email, model.Roles, model.Claims));
         }
 
+        /// <summary>
+        /// Refreshes JWT token.
+        /// </summary>
+        /// <param name="token">The token.</param>
+        /// <returns>System.Task{BaseResponseObject}.</returns>
         [HttpPost]
         [Route("refresh-token")]
+        [AllowAnonymous]
         public async Task<BaseResponseObject> RefreshTokenAsync([FromBody] TokenCommand token)
         {
             return await _mediator.Send(new TokenCommand(token.Token, token.RefreshToken));
         }
 
+        /// <summary>
+        /// Adds roles.
+        /// </summary>
+        /// <param name="request">The request.</param>
+        /// <returns>System.Task{BaseResponseObject}.</returns>
         [HttpPost]
         [Route("role")]
-        [Authorize(Roles ="SuperAdmin")]
+        [Authorize(Roles = "SuperAdmin")]
         public async Task<BaseResponseObject> AddRoleAsync([FromBody] RoleCommand request)
         {
             return await _mediator.Send(new RoleCommand(request.Roles));

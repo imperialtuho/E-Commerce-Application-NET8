@@ -1,4 +1,4 @@
-﻿using Application.Configurations.Commands;
+﻿using Application.Common.CqrsBase.Commands;
 using Application.Configurations.Interfaces.Services;
 using Application.Configurations.Security.Commands.Login;
 using Application.Dtos.Identity;

@@ -1,4 +1,4 @@
-﻿using Application.Configurations.Commands;
+﻿using Application.Common.CqrsBase.Commands;
 using Domain.Common;
 
 namespace Application.Configurations.Security.Commands.Role
