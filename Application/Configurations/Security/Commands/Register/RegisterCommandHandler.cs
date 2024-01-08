@@ -1,4 +1,4 @@
-﻿using Application.Configurations.Commands;
+﻿using Application.Common.CqrsBase.Commands;
 using Application.Configurations.Interfaces.Services;
 using Application.Configurations.Security.Commands.Login;
 using Application.Dtos.Identity;
@@ -37,7 +37,7 @@ namespace Application.Configurations.Security.Commands.Register
 
             try
             {
-                TokenDto token = await _authService.RegisterAsync(user, request.Password, request.Roles, request.Claims);
+                TokenDto token = await _authService.RegisterAsync(user, request.Password, request.Claims, request.Roles);
 
                 if (token != null)
                 {

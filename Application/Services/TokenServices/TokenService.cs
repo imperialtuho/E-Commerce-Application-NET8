@@ -3,7 +3,7 @@ using Application.Configurations.Interfaces.Services;
 using Application.Dtos.Identity;
 using System.Security.Claims;
 
-namespace Application.Services
+namespace Application.Services.TokenServices
 {
     public class TokenService : ITokenService
     {

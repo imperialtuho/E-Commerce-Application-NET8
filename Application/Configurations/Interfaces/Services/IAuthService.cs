@@ -10,7 +10,7 @@ namespace Application.Configurations.Interfaces.Services
 
         IList<UserDto> GetAll();
 
-        Task<TokenDto> RegisterAsync(UserDto user, string password, IList<string>? roles = null, IList<ClaimDto>? claims = null);
+        Task<TokenDto> RegisterAsync(UserDto user, string password, IList<ClaimDto> claims, IList<string>? roles = null);
 
         Task<bool> AddUserToRolesAsync(string email, IList<string> roles);
 
@@ -30,9 +30,9 @@ namespace Application.Configurations.Interfaces.Services
 
         Task<string> Get2FaTokenAsync(string email);
 
-        Task<TokenDto> Verify2FaTokenAsync(string email, string code);
+        Task<TokenDto> Verify2FaTokenAsync(string email, string token);
 
-        Task<bool> RegisterWithEmailConfirmAsync(UserDto user, string password, IList<string>? roles = null, IList<ClaimDto>? claims = null);
+        Task<bool> RegisterWithEmailConfirmAsync(UserDto user, string password, IList<ClaimDto> claims, IList<string>? roles = null);
 
         Task<bool> ResendVerificationEmail(string email);
 

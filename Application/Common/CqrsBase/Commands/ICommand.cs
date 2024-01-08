@@ -1,4 +1,4 @@
-﻿namespace Application.Configurations.Commands
+﻿namespace Application.Common.CqrsBase.Commands
 {
     public interface ICommand : IRequest
     {

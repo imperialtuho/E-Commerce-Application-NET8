@@ -1,4 +1,4 @@
-﻿namespace Application.Configurations.Commands
+﻿namespace Application.Common.CqrsBase.Commands
 {
     public interface ICommandHandler<in TCommand> :
         IRequestHandler<TCommand> where TCommand : ICommand

@@ -2,7 +2,7 @@
 using Application.Configurations.Interfaces.Services;
 using Domain.Entities.Identity;
 
-namespace Application.Services
+namespace Application.Services.TokenServices
 {
     public class RefreshTokenService : IRefreshTokenService
     {

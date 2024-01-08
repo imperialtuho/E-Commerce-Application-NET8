@@ -1,7 +1,6 @@
-﻿using Application.Configurations.Commands;
+﻿using Application.Common.CqrsBase.Commands;
 using Application.Configurations.Interfaces.Services;
 using Domain.Common;
-using Domain.Constants;
 
 namespace Application.Configurations.Security.Commands.Role
 {
@@ -20,9 +19,9 @@ namespace Application.Configurations.Security.Commands.Role
             {
                 CorrelationId = Guid.NewGuid(),
                 Data = null,
-                Message = ResponseMessage.Failed,
+                Message = $"{nameof(RoleCommandHandler)} {ResponseMessage.Failed}",
                 Status = false,
-                StatusCode = HttpStatusCode.InternalServerError
+                StatusCode = HttpStatusCode.NoContent
             };
 
             IEnumerable<string> roleResult = await _authService.AddRoleAsync(request.Roles);

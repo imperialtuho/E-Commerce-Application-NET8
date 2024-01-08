@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers.ProductControllers
@@ -6,11 +7,15 @@ namespace WebAPI.Controllers.ProductControllers
     [Route("[controller]")]
     public class ProductController : ControllerBase
     {
-        private readonly ILogger<ProductController> _logger;
+        private readonly IMediator _mediator;
 
-        public ProductController(ILogger<ProductController> logger)
+        /// <summary>
+        /// Product controller constructor.
+        /// </summary>
+        /// <param name="mediator">The mediator.</param>
+        public ProductController(IMediator mediator)
         {
-            _logger = logger;
+            _mediator = mediator;
         }
     }
 }
