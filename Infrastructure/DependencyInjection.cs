@@ -19,7 +19,7 @@ namespace Infrastructure
     {
         public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<ApplicationUserContext>(options =>
+            services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection"), b => b.MigrationsAssembly("WebAPI"));
             });
@@ -43,7 +43,7 @@ namespace Infrastructure
             })
             .AddRoles<IdentityRole>()
             .AddClaimsPrincipalFactory<UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>>()
-            .AddEntityFrameworkStores<ApplicationUserContext>();
+            .AddEntityFrameworkStores<ApplicationDbContext>();
 
             services.AddAuthentication(options =>
             {

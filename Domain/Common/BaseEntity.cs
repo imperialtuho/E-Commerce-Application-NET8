@@ -1,7 +1,10 @@
-﻿namespace Domain.Common
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Domain.Common
 {
     public class BaseEntity<TId>
     {
+        [Key]
         public TId Id { get; set; }
 
         public DateTime? CreatedDate { get; set; }

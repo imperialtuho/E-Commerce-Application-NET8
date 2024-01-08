@@ -7,9 +7,9 @@ namespace Infrastructure.Repositories.Providers.Identity
 {
     public class RefreshTokenRepository : IRefreshTokenRepository
     {
-        private readonly ApplicationUserContext _dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
-        public RefreshTokenRepository(ApplicationUserContext dbContext)
+        public RefreshTokenRepository(ApplicationDbContext dbContext)
         {
             _dbContext = dbContext;
         }
