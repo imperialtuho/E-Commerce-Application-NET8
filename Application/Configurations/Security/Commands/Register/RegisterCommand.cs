@@ -20,7 +20,7 @@ namespace Application.Configurations.Security.Commands.Register
 
         public IList<ClaimDto> Claims { get; set; }
 
-        public RegisterCommand(string userName, string password, string email, IList<string>? roles, IList<ClaimDto> claims)
+        public RegisterCommand(string userName, string password, string email, IList<ClaimDto> claims, IList<string>? roles)
         {
             UserName = userName;
             Password = password;

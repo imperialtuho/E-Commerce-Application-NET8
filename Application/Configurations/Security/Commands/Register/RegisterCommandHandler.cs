@@ -37,7 +37,7 @@ namespace Application.Configurations.Security.Commands.Register
 
             try
             {
-                TokenDto token = await _authService.RegisterAsync(user, request.Password, request.Roles, request.Claims);
+                TokenDto token = await _authService.RegisterAsync(user, request.Password, request.Claims, request.Roles);
 
                 if (token != null)
                 {

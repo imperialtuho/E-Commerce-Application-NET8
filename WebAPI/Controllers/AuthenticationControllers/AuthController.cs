@@ -51,7 +51,7 @@ namespace WebAPI.Controllers.AuthenticationControllers
         [AllowAnonymous]
         public async Task<BaseResponseObject> Register([FromBody] RegisterCommand model)
         {
-            return await _mediator.Send(new RegisterCommand(model.UserName, model.Password, model.Email, model.Roles, model.Claims));
+            return await _mediator.Send(new RegisterCommand(model.UserName, model.Password, model.Email, model.Claims, model.Roles));
         }
 
         /// <summary>

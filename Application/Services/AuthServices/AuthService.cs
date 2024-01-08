@@ -23,7 +23,11 @@ namespace Application.Services
 
         private readonly IRefreshTokenRepository _refreshTokenRepository;
 
-        public AuthService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IPasswordHasher<ApplicationUser> passwordHasher, ITokenRepository tokenRepository, IRefreshTokenRepository refreshTokenRepository)
+        public AuthService(UserManager<ApplicationUser> userManager,
+            RoleManager<IdentityRole> roleManager,
+            IPasswordHasher<ApplicationUser> passwordHasher,
+            ITokenRepository tokenRepository,
+            IRefreshTokenRepository refreshTokenRepository)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -93,9 +97,26 @@ namespace Application.Services
             throw new NotFoundException(id, "User");
         }
 
-        public Task<string> Get2FaTokenAsync(string email)
+        public async Task<string> Get2FaTokenAsync(string email)
         {
-            throw new NotImplementedException();
+            ApplicationUser? user = await _userManager.FindByEmailAsync(email);
+
+            if (user != null)
+            {
+                string token = await _userManager.GenerateTwoFactorTokenAsync(user, TokenOptions.DefaultProvider);
+
+                if (!string.IsNullOrEmpty(token))
+                {
+                    var emailHelper = new EmailHelper();
+                    _ = emailHelper.SendEmailTwoFactorCode(user.Email, token);
+
+                    return token;
+                }
+
+                throw new ApplicationException("Something went wrong.");
+            }
+
+            throw new ArgumentException("User doesn't exist.");
         }
 
         public IList<UserDto> GetAll()
@@ -105,7 +126,7 @@ namespace Application.Services
 
         public async Task<UserDto> GetByEmailAsync(string email)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            ApplicationUser? user = await _userManager.FindByEmailAsync(email);
 
             if (user != null)
             {
@@ -117,7 +138,7 @@ namespace Application.Services
 
         public async Task<UserDto> GetByIdAsync(string id)
         {
-            var user = await _userManager.FindByIdAsync(id);
+            ApplicationUser? user = await _userManager.FindByIdAsync(id);
 
             if (user != null)
             {
@@ -125,11 +146,6 @@ namespace Application.Services
             }
 
             throw new NotFoundException(id, "User");
-        }
-
-        public Task<TokenDto> GoogleLogin(ExternalAuthDto externalAuth)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<bool> InvalidateUserTokens(string email)
@@ -164,8 +180,8 @@ namespace Application.Services
 
                 if (isPasswordMatched)
                 {
-                    var roles = await _userManager.GetRolesAsync(loginUser);
-                    var claims = await _userManager.GetClaimsAsync(loginUser);
+                    IList<string> roles = await _userManager.GetRolesAsync(loginUser);
+                    IList<Claim> claims = await _userManager.GetClaimsAsync(loginUser);
 
                     return await _tokenRepository.CreateTokenAsync(GetUserDto(loginUser), roles, claims);
                 }
@@ -187,16 +203,16 @@ namespace Application.Services
 
             if (loginUser != null)
             {
-                var isEmailConfirmed = loginUser.EmailConfirmed;
+                bool isEmailConfirmed = loginUser.EmailConfirmed;
 
                 if (isEmailConfirmed)
                 {
-                    var isPasswordMatched = await _userManager.CheckPasswordAsync(loginUser, password);
+                    bool isPasswordMatched = await _userManager.CheckPasswordAsync(loginUser, password);
 
                     if (isPasswordMatched)
                     {
-                        var roles = await _userManager.GetRolesAsync(loginUser);
-                        var claims = await _userManager.GetClaimsAsync(loginUser);
+                        IList<string> roles = await _userManager.GetRolesAsync(loginUser);
+                        IList<Claim> claims = await _userManager.GetClaimsAsync(loginUser);
 
                         return await _tokenRepository.CreateTokenAsync(GetUserDto(loginUser), roles, claims);
                     }
@@ -210,41 +226,70 @@ namespace Application.Services
             throw new ArgumentException($"Invalid credential.");
         }
 
-        public Task<bool> LoginWith2FaAsync(string email, string password)
+        public async Task<bool> LoginWith2FaAsync(string email, string password)
         {
-            throw new NotImplementedException();
+            ValidateEmail(email);
+
+            if (string.IsNullOrEmpty(password))
+            {
+                throw new ArgumentException("Password cannot be empty.");
+            }
+
+            ApplicationUser? loginUser = await _userManager.FindByEmailAsync(email);
+
+            if (loginUser != null)
+            {
+                bool isPasswordMatched = await _userManager.CheckPasswordAsync(loginUser, password);
+
+                if (isPasswordMatched)
+                {
+                    string token = await _userManager.GenerateTwoFactorTokenAsync(loginUser, TokenOptions.DefaultProvider);
+
+                    if (!string.IsNullOrEmpty(token))
+                    {
+                        var emailHelper = new EmailHelper();
+                        bool emailResponse = emailHelper.SendEmailTwoFactorCode(loginUser.Email, token);
+
+                        return emailResponse;
+                    }
+
+                    throw new ApplicationException("Something went wrong.");
+                }
+            }
+
+            throw new ArgumentException($"Invalid credential.");
         }
 
         public async Task<TokenDto> RefreshTokenAsync(TokenDto token)
         {
-            var principal = _tokenRepository.GetPrincipalFromExpiredToken(token.Token);
+            ClaimsPrincipal? principal = _tokenRepository.GetPrincipalFromExpiredToken(token.Token);
 
             if (principal != null)
             {
-                var tokenExpiryUnix = long.Parse(principal.Claims.Single(p => p.Type == JwtRegisteredClaimNames.Exp).Value);
-                var tokenExpiryDate = new DateTime(1970, 1, 1, 0, 0, 0).AddSeconds(tokenExpiryUnix);
+                long tokenExpiryUnix = long.Parse(principal.Claims.Single(p => p.Type == JwtRegisteredClaimNames.Exp).Value);
+                DateTime tokenExpiryDate = DateTime.UnixEpoch.AddSeconds(tokenExpiryUnix);
 
                 if (tokenExpiryDate <= DateTime.Now)
                 {
-                    var jti = principal.Claims.Single(p => p.Type == JwtRegisteredClaimNames.Jti).Value;
-                    var storedRefreshToken = await _refreshTokenRepository.FindByTokenAsync(token.RefreshToken);
+                    string jti = principal.Claims.Single(p => p.Type == JwtRegisteredClaimNames.Jti).Value;
+                    RefreshToken? storedRefreshToken = await _refreshTokenRepository.FindByTokenAsync(token.RefreshToken);
 
                     if (
                         storedRefreshToken != null &&
                         storedRefreshToken.JwtId == jti &&
                         storedRefreshToken.ExpiryDate >= DateTime.Now &&
-                        storedRefreshToken.Invalidated == false &&
-                        storedRefreshToken.Used == false)
+                        !storedRefreshToken.Invalidated &&
+                        !storedRefreshToken.Used)
                     {
                         storedRefreshToken.Used = true;
                         _refreshTokenRepository.Update(storedRefreshToken);
                         await _refreshTokenRepository.CompleteAsync();
 
-                        var email = principal.Claims.Single(p => p.Type == ClaimTypes.Email).Value;
-                        var user = await _userManager.FindByEmailAsync(email);
-                        var roles = await _userManager.GetRolesAsync(user);
+                        string? email = principal.Claims.Single(p => p.Type == ClaimTypes.Email).Value;
+                        ApplicationUser? user = await _userManager.FindByEmailAsync(email) ?? throw new NotFoundException(email, email);
+                        IList<string> roles = await _userManager.GetRolesAsync(user);
 
-                        var resource = await _tokenRepository.CreateTokenAsync(GetUserDto(user), roles);
+                        TokenDto resource = await _tokenRepository.CreateTokenAsync(GetUserDto(user), roles);
                         return resource;
                     }
 
@@ -257,7 +302,7 @@ namespace Application.Services
             throw new ArgumentException("Invalid token.");
         }
 
-        public async Task<TokenDto> RegisterAsync(UserDto user, string password, IList<string>? roles = null, IList<ClaimDto>? claims = null)
+        public async Task<TokenDto> RegisterAsync(UserDto user, string password, IList<ClaimDto> claims, IList<string>? roles = null)
         {
             ApplicationUser? foundUserByEmail = await _userManager.FindByEmailAsync(user.Email);
             ApplicationUser? foundUserByUserName = await _userManager.FindByNameAsync(user.UserName);
@@ -278,7 +323,7 @@ namespace Application.Services
 
                 if (rs.Succeeded)
                 {
-                    ApplicationUser? newUser = await _userManager.FindByEmailAsync(user.Email);
+                    ApplicationUser? newUser = await _userManager.FindByEmailAsync(user.Email) ?? throw new NotFoundException(user.Email, user.Email);
                     var addingRoles = roles != null && roles.Any() ? roles : new List<string>() { Roles.Member.ToString() };
                     await AddRoles(newUser, addingRoles);
                     await AddClaims(newUser, claims);
@@ -293,10 +338,10 @@ namespace Application.Services
             throw new ArgumentException("User with email exists, please try another email.");
         }
 
-        public async Task<bool> RegisterWithEmailConfirmAsync(UserDto user, string password, IList<string>? roles = null, IList<ClaimDto>? claims = null)
+        public async Task<bool> RegisterWithEmailConfirmAsync(UserDto user, string password, IList<ClaimDto>? claims, IList<string>? roles = null)
         {
-            var foundUserByEmail = await _userManager.FindByEmailAsync(user.Email);
-            var foundUserByUserName = await _userManager.FindByNameAsync(user.UserName);
+            ApplicationUser? foundUserByEmail = await _userManager.FindByEmailAsync(user.Email);
+            ApplicationUser? foundUserByUserName = await _userManager.FindByNameAsync(user.UserName);
 
             if (foundUserByEmail == null && foundUserByUserName == null)
             {
@@ -310,18 +355,18 @@ namespace Application.Services
                 ValidateRoles(roles);
                 ValidateClaims(claims);
 
-                var rs = await _userManager.CreateAsync(appUser, password);
+                IdentityResult? rs = await _userManager.CreateAsync(appUser, password);
 
                 if (rs.Succeeded)
                 {
-                    var newUser = await _userManager.FindByEmailAsync(user.Email);
+                    ApplicationUser? newUser = await _userManager.FindByEmailAsync(user.Email) ?? throw new NotFoundException(user.Email, user.Email);
                     var addingRoles = roles != null && roles.Any() ? roles : new List<string>() { Roles.Member.ToString() };
                     await AddRoles(newUser, addingRoles);
                     await AddClaims(newUser, claims);
 
-                    var token = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
+                    string token = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
 
-                    if (token != null)
+                    if (!string.IsNullOrEmpty(token))
                     {
                         var emailHelper = new EmailHelper();
                         bool emailResponse = emailHelper.SendEmailTwoFactorCode(user.Email, token);
@@ -338,11 +383,11 @@ namespace Application.Services
 
         public async Task<bool> ResendVerificationEmail(string email)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            ApplicationUser? user = await _userManager.FindByEmailAsync(email);
 
             if (user != null)
             {
-                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                string? token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
                 if (token != null)
                 {
@@ -360,13 +405,13 @@ namespace Application.Services
 
         public async Task<bool> ResetPasswordAsync(string email, string password, string token)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            ApplicationUser? user = await _userManager.FindByEmailAsync(email);
 
             if (user != null)
             {
                 ValidatePassword(password);
 
-                var result = await _userManager.ResetPasswordAsync(user, token, password);
+                IdentityResult? result = await _userManager.ResetPasswordAsync(user, token, password);
 
                 if (result.Succeeded)
                 {
@@ -381,11 +426,11 @@ namespace Application.Services
 
         public async Task<bool> SendResetPasswordEmailAsync(string email)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            ApplicationUser? user = await _userManager.FindByEmailAsync(email);
 
             if (user != null)
             {
-                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                string token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
                 if (token != null)
                 {
@@ -403,7 +448,7 @@ namespace Application.Services
 
         public async Task<bool> UpdatePasswordAsync(string id, string newPass)
         {
-            var currentUser = await _userManager.FindByIdAsync(id);
+            ApplicationUser? currentUser = await _userManager.FindByIdAsync(id);
 
             if (currentUser != null)
             {
@@ -411,7 +456,7 @@ namespace Application.Services
 
                 currentUser.PasswordHash = _passwordHasher.HashPassword(currentUser, newPass);
 
-                var user = await _userManager.UpdateAsync(currentUser);
+                IdentityResult? user = await _userManager.UpdateAsync(currentUser);
 
                 if (user.Succeeded)
                 {
@@ -424,19 +469,48 @@ namespace Application.Services
             throw new NotFoundException(id, nameof(UpdatePasswordAsync));
         }
 
-        public Task<TokenDto> Verify2FaTokenAsync(string email, string code)
+        public async Task<TokenDto> Verify2FaTokenAsync(string email, string token)
         {
-            throw new NotImplementedException();
+            ApplicationUser? user = await _userManager.FindByEmailAsync(email) ?? throw new NotFoundException(email, email);
+
+            bool verified = await _userManager.VerifyTwoFactorTokenAsync(user, TokenOptions.DefaultProvider, token);
+
+            if (verified)
+            {
+                IList<string> roles = await _userManager.GetRolesAsync(user);
+                IList<Claim> claims = await _userManager.GetClaimsAsync(user);
+
+                return await _tokenRepository.CreateTokenAsync(GetUserDto(user), roles, claims);
+            }
+
+            throw new ArgumentException("OTP does not match, please try again.");
         }
 
-        public Task<TokenDto> VerifyEmailTokenAsync(string email, string token)
+        public async Task<TokenDto> VerifyEmailTokenAsync(string email, string token)
         {
-            throw new NotImplementedException();
+            ApplicationUser? user = await _userManager.FindByEmailAsync(email) ?? throw new NotFoundException(email, email);
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+
+            if (result.Succeeded)
+            {
+                IList<string> roles = await _userManager.GetRolesAsync(user);
+                IList<Claim> claims = await _userManager.GetClaimsAsync(user);
+
+                return await _tokenRepository.CreateTokenAsync(GetUserDto(user), roles, claims);
+            }
+
+            throw new ArgumentException("Email verification failed, please try again.");
         }
 
         public async Task<IEnumerable<string>> AddRoleAsync(IList<string> roles)
         {
             return await InsertRoleAsync(roles);
+        }
+
+        public Task<TokenDto> GoogleLogin(ExternalAuthDto externalAuth)
+        {
+            throw new NotImplementedException();
         }
     }
 }
