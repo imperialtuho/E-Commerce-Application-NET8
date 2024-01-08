@@ -28,11 +28,6 @@ namespace WebAPI
                     Name = "Imperial Tu Ho",
                     Email = "imperialtuho0410@gmail.com",
                     Url = new Uri("https://www.example.com"),
-                },
-                License = new OpenApiLicense
-                {
-                    Name = "Use under LICX",
-                    Url = new Uri("https://example.com/license"),
                 }
             }));
 

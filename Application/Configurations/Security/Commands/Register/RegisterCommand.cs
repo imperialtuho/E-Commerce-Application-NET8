@@ -1,4 +1,4 @@
-﻿using Application.Configurations.Commands;
+﻿using Application.Common.CqrsBase.Commands;
 using Application.Dtos.Identity;
 using Domain.Common;
 using System.ComponentModel.DataAnnotations;
